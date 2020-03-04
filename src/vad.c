@@ -4,6 +4,10 @@
 
 #include "vad.h"
 
+#include "pav_analysis.h"
+
+#define Abs(x) (x>0 ? x:-x);
+
 const float FRAME_TIME = 10.0F; /* in ms. */
 
 /* 
@@ -31,7 +35,7 @@ typedef struct {
  * TODO: Delete and use your own features!
  */
 
-Features compute_features(const float *x, int N) {
+Features compute_features(const float *x, int N,float fm) {
   /*
    * Input: x[i] : i=0 .... N-1 
    * Ouput: computed features
@@ -42,16 +46,25 @@ Features compute_features(const float *x, int N) {
    * For the moment, compute random value between 0 and 1 
    */
   Features feat;
-  feat.zcr = feat.p = feat.am = (float) rand()/RAND_MAX;
+  feat.zcr = compute_zcr(x,N,fm);
+  feat.p = compute_power(x,N);
+  feat.am = compute_am(x,N);
   return feat;
 }
 
 /* 
  * TODO: Init the values of vad_data
  */
+typedef struct{
+  char state;
+  float sampling_rate;
+  float frame_length;
+}vad_data
+
 
 VAD_DATA * vad_open(float rate) {
   VAD_DATA *vad_data = malloc(sizeof(VAD_DATA));
+  feat.p=0;
   vad_data->state = ST_INIT;
   vad_data->sampling_rate = rate;
   vad_data->frame_length = rate * FRAME_TIME * 1e-3;
