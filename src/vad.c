@@ -3,7 +3,6 @@
 #include <stdio.h>
 
 #include "vad.h"
-
 #include "pav_analysis.h"
 
 #define Abs(x) (x>0 ? x:-x);
@@ -17,7 +16,7 @@ const float FRAME_TIME = 10.0F; /* in ms. */
  */
 
 const char *state_str[] = {
-  "UNDEF", "S", "V", "INIT"
+  "UNDEF", "S", "V", "INIT","MS","MV"
 };
 
 const char *state2str(VAD_STATE st) {
@@ -45,26 +44,34 @@ Features compute_features(const float *x, int N,float fm) {
    *
    * For the moment, compute random value between 0 and 1 
    */
-  Features feat;
-  feat.zcr = compute_zcr(x,N,fm);
-  feat.p = compute_power(x,N);
-  feat.am = compute_am(x,N);
+
+  /*Features feat;
+  feat.zcr = feat.p = feat.am = (float) rand()/RAND_MAX;
   return feat;
+*/
+
+ Features feat;
+  float p=0;
+    for (int i=0;i<N;i++){
+        p= p + (x[i]*x[i]);
+    }
+    p= 10*log10(p/N);
+    feat.p=p;
+
+    return feat;
+  //Features feat;
+  //feat.zcr = compute_zcr(x,N,fm);
+  //feat.p = compute_power(x,N);
+  //feat.am = compute_am(x,N);
+  //return feat;
 }
 
 /* 
  * TODO: Init the values of vad_data
  */
-typedef struct{
-  char state;
-  float sampling_rate;
-  float frame_length;
-}vad_data
-
 
 VAD_DATA * vad_open(float rate) {
   VAD_DATA *vad_data = malloc(sizeof(VAD_DATA));
-  feat.p=0;
   vad_data->state = ST_INIT;
   vad_data->sampling_rate = rate;
   vad_data->frame_length = rate * FRAME_TIME * 1e-3;
@@ -97,8 +104,18 @@ VAD_STATE vad(VAD_DATA *vad_data, float *x) {
    * program finite state automaton, define conditions, etc.
    */
 
-  Features f = compute_features(x, vad_data->frame_length);
+  Features f = compute_features(x, vad_data->frame_length, vad_data->sampling_rate);
   vad_data->last_feature = f.p; /* save feature, in case you want to show */
+  /*float mitjana;
+  for(int i=0;i<10;i++){
+    mitjana=mitjana+f.p[i];
+  }
+  vad_data->k0 = mitjana/10;*/
+  vad_data->k0 = -65; //s'ha de calcular el umbral de referencia del soroll a partir de les primeres mostres de la senyal en cada cas
+  vad_data->k1 = vad_data->k0 + 10;
+  //vad_data->k2 = vad_data->k0 + 20;
+  int tiempo_SILENCE;
+  int tiempo_VOICE;
 
   switch (vad_data->state) {
   case ST_INIT:
@@ -106,26 +123,76 @@ VAD_STATE vad(VAD_DATA *vad_data, float *x) {
     break;
 
   case ST_SILENCE:
-    if (f.p > 0.95)
-      vad_data->state = ST_VOICE;
+    if (f.p > vad_data->k1){
+      vad_data->state = ST_MAYBEVOICE;
+      tiempo_VOICE=1;
+    }
     break;
 
   case ST_VOICE:
-    if (f.p < 0.01)
-      vad_data->state = ST_SILENCE;
+    if (f.p < vad_data->k1 ){
+      vad_data->state = ST_MAYBESILENCE;
+      tiempo_SILENCE=1;
+    }
     break;
 
+  case ST_MAYBEVOICE:
+    if(f.p > vad_data->k1){
+      vad_data->state=ST_MAYBEVOICE;
+      tiempo_VOICE++;
+    }
+    if(tiempo_VOICE>5){
+      vad_data->state= ST_VOICE;
+      //poner las 5 ultimas tramas que estavan a maybe voice a voice
+    }
+
+    if(f.p < vad_data->k1){
+      vad_data->state=ST_SILENCE;
+      //poner las tramas (que hay un numero d tramas igual a tiempo_voice) que estavan a maybe voice a silence
+    }
+  break;
+
+  case ST_MAYBESILENCE:
+    if (f.p < vad_data->k1){
+      vad_data->state = ST_MAYBESILENCE;
+      tiempo_SILENCE++;
+    }
+    if(tiempo_SILENCE>5){
+      vad_data->state= ST_SILENCE;
+      //Poner las 5 ultimas tramas que estavan a maybe silence a silence
+    }
+    if(f.p > vad_data->k1){
+      vad_data->state= ST_VOICE;
+    }
+  break;
+
   case ST_UNDEF:
+    
+    /*if(tiempo_VOICE>0.05){ //VENIM DE SILENCE: si estem a ST_UNDEF per més de 50ms, podem decidir que he começat a parlar
+      vad_data->state= ST_VOICE;
+    }
+    else if(tiempo_VOICE<0.05){ // VENIM DE SILENCE: si estem a ST_UNDEF menys de 50ms, podem dir que ha sigut un soroll de curta durada i ens quedem a silence
+      vad_data->state=ST_SILENCE;
+    }
+    else if(tiempo_SILENCE>){ //VENIM DE VOICE: si estem a ST_UNDEF per més de X ms, podem decidir que ha sigut silence
+      vad_data->state=ST_SILENCE;
+    }
+    else if(tiempo_SILENCE<){//VENIM DE VOICE: si estem a ST_UNDEF menys de 50ms, podem dir que ha sigut una pausa breu i ens quedem a voice
+      vad_data->state=ST_VOICE;
+    }*/
+    
     break;
   }
 
   if (vad_data->state == ST_SILENCE ||
-      vad_data->state == ST_VOICE)
+      vad_data->state == ST_VOICE || 
+      vad_data->state == ST_MAYBESILENCE ||
+      vad_data->state == ST_MAYBEVOICE)
     return vad_data->state;
   else
     return ST_UNDEF;
 }
 
 void vad_show_state(const VAD_DATA *vad_data, FILE *out) {
-  fprintf(out, "%d\t%f\n", vad_data->state, vad_data->last_feature);
+  fprintf(out, "%d\t%f\n", vad_data->state, vad_data->last_feature); 
 }
