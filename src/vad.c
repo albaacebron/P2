@@ -45,10 +45,6 @@ Features compute_features(const float *x, int N,float fm) {
    * For the moment, compute random value between 0 and 1 
    */
 
-  /*Features feat;
-  feat.zcr = feat.p = feat.am = (float) rand()/RAND_MAX;
-  return feat;
-*/
 
  Features feat;
   float p=0;
@@ -59,11 +55,9 @@ Features compute_features(const float *x, int N,float fm) {
     feat.p=p;
 
     return feat;
-  //Features feat;
   //feat.zcr = compute_zcr(x,N,fm);
   //feat.p = compute_power(x,N);
   //feat.am = compute_am(x,N);
-  //return feat;
 }
 
 /* 
@@ -82,8 +76,8 @@ VAD_STATE vad_close(VAD_DATA *vad_data) {
   /* 
    * TODO: decide what to do with the last undecided frames
    */
-  VAD_STATE state = vad_data->state;
 
+  VAD_STATE state = ST_SILENCE; //vad_data->state;
   free(vad_data);
   return state;
 }
@@ -106,42 +100,39 @@ VAD_STATE vad(VAD_DATA *vad_data, float *x) {
 
   Features f = compute_features(x, vad_data->frame_length, vad_data->sampling_rate);
   vad_data->last_feature = f.p; /* save feature, in case you want to show */
-  /*float mitjana;
-  for(int i=0;i<10;i++){
-    mitjana=mitjana+f.p[i];
-  }
-  vad_data->k0 = mitjana/10;*/
-  vad_data->k0 = -65; //s'ha de calcular el umbral de referencia del soroll a partir de les primeres mostres de la senyal en cada cas
-  vad_data->k1 = vad_data->k0 + 10;
-  //vad_data->k2 = vad_data->k0 + 20;
-  int tiempo_SILENCE;
-  int tiempo_VOICE;
-
   switch (vad_data->state) {
+  
   case ST_INIT:
-    vad_data->state = ST_SILENCE;
+    vad_data->k0 = vad_data->k0 + f.p;
+    vad_data->trama++;
+    if(vad_data->trama==20){
+      vad_data->k0 = vad_data->k0/20; //s'ha de calcular el umbral de referencia del soroll a partir de les primeres mostres de la senyal en cada cas
+      vad_data->k1 = vad_data->k0 + 5;
+      vad_data->k2 = vad_data->k0 + 10;
+      vad_data->state = ST_SILENCE;
+    }
     break;
 
   case ST_SILENCE:
     if (f.p > vad_data->k1){
       vad_data->state = ST_MAYBEVOICE;
-      tiempo_VOICE=1;
+      vad_data->tiempo_VOICE=1;
     }
     break;
 
   case ST_VOICE:
     if (f.p < vad_data->k1 ){
       vad_data->state = ST_MAYBESILENCE;
-      tiempo_SILENCE=1;
+      vad_data->tiempo_SILENCE=1;
     }
     break;
 
   case ST_MAYBEVOICE:
-    if(f.p > vad_data->k1){
+    if(f.p > vad_data->k2){
       vad_data->state=ST_MAYBEVOICE;
-      tiempo_VOICE++;
+      vad_data->tiempo_VOICE++;
     }
-    if(tiempo_VOICE>5){
+    if(vad_data->tiempo_VOICE>20){
       vad_data->state= ST_VOICE;
       //poner las 5 ultimas tramas que estavan a maybe voice a voice
     }
@@ -155,40 +146,27 @@ VAD_STATE vad(VAD_DATA *vad_data, float *x) {
   case ST_MAYBESILENCE:
     if (f.p < vad_data->k1){
       vad_data->state = ST_MAYBESILENCE;
-      tiempo_SILENCE++;
+      vad_data->tiempo_SILENCE++;
     }
-    if(tiempo_SILENCE>5){
+    if(vad_data->tiempo_SILENCE>20){
       vad_data->state= ST_SILENCE;
       //Poner las 5 ultimas tramas que estavan a maybe silence a silence
     }
-    if(f.p > vad_data->k1){
+    if(f.p > vad_data->k2){
       vad_data->state= ST_VOICE;
     }
   break;
 
   case ST_UNDEF:
     
-    /*if(tiempo_VOICE>0.05){ //VENIM DE SILENCE: si estem a ST_UNDEF per més de 50ms, podem decidir que he começat a parlar
-      vad_data->state= ST_VOICE;
-    }
-    else if(tiempo_VOICE<0.05){ // VENIM DE SILENCE: si estem a ST_UNDEF menys de 50ms, podem dir que ha sigut un soroll de curta durada i ens quedem a silence
-      vad_data->state=ST_SILENCE;
-    }
-    else if(tiempo_SILENCE>){ //VENIM DE VOICE: si estem a ST_UNDEF per més de X ms, podem decidir que ha sigut silence
-      vad_data->state=ST_SILENCE;
-    }
-    else if(tiempo_SILENCE<){//VENIM DE VOICE: si estem a ST_UNDEF menys de 50ms, podem dir que ha sigut una pausa breu i ens quedem a voice
-      vad_data->state=ST_VOICE;
-    }*/
-    
     break;
   }
 
   if (vad_data->state == ST_SILENCE ||
-      vad_data->state == ST_VOICE || 
-      vad_data->state == ST_MAYBESILENCE ||
-      vad_data->state == ST_MAYBEVOICE)
+      vad_data->state == ST_VOICE || vad_data->state==ST_MAYBESILENCE || vad_data->state==ST_MAYBEVOICE)
     return vad_data->state;
+  else if(vad_data->state==ST_INIT)
+    return ST_SILENCE;
   else
     return ST_UNDEF;
 }

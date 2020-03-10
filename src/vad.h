@@ -20,6 +20,9 @@ typedef struct {
   float k0; //umbral de referencia
   float k1; //umbral de sonido sonoro
   float k2; //umbral de sonido sordo
+  int tiempo_SILENCE; 
+  int tiempo_VOICE;
+  int trama;
 } VAD_DATA;
 
 /* Call this function before using VAD: 

@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
   SF_INFO sf_info;
   FILE *vadfile;
   int n_read = 0, i;
+  int n_write= 0, j;
 
   VAD_DATA *vad_data;
   VAD_STATE state, last_state;
@@ -71,22 +72,31 @@ int main(int argc, char *argv[]) {
   for (i=0; i< frame_size; ++i) buffer_zeros[i] = 0.0F;
 
   frame_duration = (float) frame_size/ (float) sf_info.samplerate;
-  last_state = ST_UNDEF;
+  last_state = ST_SILENCE;
 
   for (t = last_t = 0; ; t++) { /* For each frame ... */
     /* End loop when file has finished (or there is an error) */
     if  ((n_read = sf_read_float(sndfile_in, buffer, frame_size)) != frame_size) break;
 
-    if (sndfile_out != 0) {
-      /* TODO: copy all the samples into sndfile_out */
-    }
+    /*if (sndfile_out != 0) {
+      // TODO: copy all the samples into sndfile_out //
+      n_write=sf_write_float(sndfile_out,buffer,frame_size);
+    }*/
 
     state = vad(vad_data, buffer);
-    if (verbose & DEBUG_VAD) vad_show_state(vad_data, stdout);
+    if (verbose & DEBUG_VAD) 
+      vad_show_state(vad_data, stdout);
 
     /* TODO: print only SILENCE and VOICE labels */
     /* As it is, it prints UNDEF segments but is should be merge to the proper value */
-    if (state != last_state) {
+    if( (state==ST_SILENCE || state==ST_VOICE) && last_state==ST_MAYBESILENCE){ // si hi ha un maybesilence decidim si es silence o voice depenent del que hi hagi a la trama de despres
+      last_state=state;
+    }
+    if( (state==ST_SILENCE || state==ST_VOICE) && last_state==ST_MAYBEVOICE){ 
+      last_state=state;
+    }
+    //if (state != last_state) {
+    if(state!=last_state){
       if (t != last_t)
         fprintf(vadfile, "%.5f\t%.5f\t%s\n", last_t * frame_duration, t * frame_duration, state2str(last_state));
       last_state = state;
@@ -95,6 +105,12 @@ int main(int argc, char *argv[]) {
 
     if (sndfile_out != 0) {
       /* TODO: go back and write zeros in silence segments */
+      if(state==ST_SILENCE){
+        n_write=sf_write_float(sndfile_out,buffer_zeros,frame_size);//poner a zero lo que se escribe en el sndfileout
+      }
+      else{
+        n_write=sf_write_float(sndfile_out,buffer,frame_size);
+      }
     }
   }
 
