@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
   int n_write= 0, j;
 
   VAD_DATA *vad_data;
-  VAD_STATE state, last_state;
+  VAD_STATE state, last_state, last_state_def;
 
   float *buffer, *buffer_zeros;
   int frame_size;         /* in samples */
@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
 
   frame_duration = (float) frame_size/ (float) sf_info.samplerate;
   last_state = ST_SILENCE;
+  last_state_def=ST_SILENCE;
 
   for (t = last_t = 0; ; t++) { /* For each frame ... */
     /* End loop when file has finished (or there is an error) */
@@ -95,13 +96,17 @@ int main(int argc, char *argv[]) {
     if( (state==ST_SILENCE || state==ST_VOICE) && last_state==ST_MAYBEVOICE){ 
       last_state=state;
     }
-    //if (state != last_state) {
+    /*if(last_state==ST_SILENCE || last_state==ST_VOICE)
+      last_state_def=last_state;*/
+
+    //if (last_state != last_state_def) {
     if(state!=last_state){
       if (t != last_t)
         fprintf(vadfile, "%.5f\t%.5f\t%s\n", last_t * frame_duration, t * frame_duration, state2str(last_state));
       last_state = state;
       last_t = t;
     }
+
 
     if (sndfile_out != 0) {
       /* TODO: go back and write zeros in silence segments */
