@@ -16,6 +16,7 @@ int main(int argc, char *argv[]) {
   FILE *vadfile;
   int n_read = 0, i;
   int n_write= 0, j;
+  bool mostrar;
 
   VAD_DATA *vad_data;
   VAD_STATE state, last_state, last_state_def;
@@ -23,7 +24,7 @@ int main(int argc, char *argv[]) {
   float *buffer, *buffer_zeros;
   int frame_size;         /* in samples */
   float frame_duration;   /* in seconds */
-  unsigned int t, last_t; /* in frames */
+  unsigned int t, last_t,tiempo; /* in frames */
 
   char	*input_wav, *output_vad, *output_wav;
 
@@ -73,7 +74,7 @@ int main(int argc, char *argv[]) {
 
   frame_duration = (float) frame_size/ (float) sf_info.samplerate;
   last_state = ST_SILENCE;
-  last_state_def=ST_SILENCE;
+  last_state_def=ST_UNDEF;
 
   for (t = last_t = 0; ; t++) { /* For each frame ... */
     /* End loop when file has finished (or there is an error) */
@@ -90,33 +91,35 @@ int main(int argc, char *argv[]) {
 
     /* TODO: print only SILENCE and VOICE labels */
     /* As it is, it prints UNDEF segments but is should be merge to the proper value */
-    if( (state==ST_SILENCE || state==ST_VOICE) && last_state==ST_MAYBESILENCE){ // si hi ha un maybesilence decidim si es silence o voice depenent del que hi hagi a la trama de despres
-      last_state=state;
+    
+    if( (state==ST_SILENCE || state==ST_VOICE) && (last_state==ST_MAYBESILENCE || last_state==ST_MAYBEVOICE)){ // si hi ha un maybesilence decidim si es silence o voice depenent del que hi hagi a la trama de despres
+        last_state=state;
     }
-    if( (state==ST_SILENCE || state==ST_VOICE) && last_state==ST_MAYBEVOICE){ 
-      last_state=state;
+    
+    if((state==ST_MAYBEVOICE || state==ST_MAYBESILENCE)&&(last_state==ST_VOICE || last_state==ST_SILENCE)){
+      last_state_def=last_state;
+      tiempo=t;
     }
-    /*if(last_state==ST_SILENCE || last_state==ST_VOICE)
-      last_state_def=last_state;*/
-
-    //if (last_state != last_state_def) {
-    if(state!=last_state){
+    
+    //if((state==ST_VOICE && last_state_def==ST_SILENCE) || (state==ST_SILENCE && last_state_def==ST_VOICE)){
+    if(state!=last_state){ 
       if (t != last_t)
-        fprintf(vadfile, "%.5f\t%.5f\t%s\n", last_t * frame_duration, t * frame_duration, state2str(last_state));
-      last_state = state;
-      last_t = t;
+      fprintf(vadfile, "%.5f\t%.5f\t%s\n", last_t * frame_duration, tiempo* frame_duration,state2str(last_state_def));
+      //last_state_def=last_state;
+      last_t = tiempo;
     }
-
 
     if (sndfile_out != 0) {
-      /* TODO: go back and write zeros in silence segments */
-      if(state==ST_SILENCE){
-        n_write=sf_write_float(sndfile_out,buffer_zeros,frame_size);//poner a zero lo que se escribe en el sndfileout
+      //TODO: go back and write zeros in silence segments 
+      if(last_state==ST_SILENCE){
+        n_write=sf_write_float(sndfile_out,buffer_zeros,frame_size);
       }
       else{
         n_write=sf_write_float(sndfile_out,buffer,frame_size);
       }
     }
+
+    last_state = state;
   }
 
   state = vad_close(vad_data);
