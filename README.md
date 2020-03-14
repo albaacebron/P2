@@ -142,7 +142,7 @@ Ejercicios
 
 	Podemos observar que los periodos de silencio y de voz los detecta bién pero con un poco de retardo. Es decir, el primer segmento de voz empieza un poco mas tarde en el hola.vad (detección) que en el hola.lab(editado manualmente) pero tiene la misma duración. Esto pasa porque el primer silencio es un poco mas largo, tarda un poquito mas en detectar la primera trama de voz. A continuación, adjuntamos dos capturas del hola.vad y el hola.lab para ver exactamente los valores de los tiempos:
 
-	<img src="img/lav_vs_vad.JPG" width="320" align="center">
+	<img src="img/lab_vs_vad.JPG" width="320" align="center">
 
 - Evalúe los resultados sobre la base de datos `db.v4` con el script `vad_evaluation.pl` e inserte a 
   continuación las tasas de sensibilidad (*recall*) y precisión para el conjunto de la base de datos (sólo
