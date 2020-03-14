@@ -175,7 +175,7 @@ Ejercicios
 
   En la imagen se muestra la forma de onda de las señales .wav. La señal de arriba se corresponde con la obtenida a partir de poner las muestras a cero cuando se detectava el estado SILENCIO y la señal de abajo corresponde con la grabada por nosotras, la original.
 
-  <img src="img/Captura_2.png" width="640" align="center">
+  <img src="img/Captura_2.PNG" width="640" align="center">
 
 
 #### Gestión de las opciones del programa usando `docopt_c`
