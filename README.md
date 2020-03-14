@@ -110,11 +110,16 @@ Ejercicios
 	 	Vemos que la señal incrementa 45dB hasta los -15dB de una letra sonora. Para las sordas observamos que el nivel de señal de potencia es de unos -40dB, es decir un incremento de 20dB respecto al nivel de referencia del silencio. 
 
 	* Duración mínima razonable de los segmentos de voz y silencio.
+		La duración mínima de los silencios es de 0.468 segundos. En general la longitud de los silencios ronda los 0.5 segundos. 
+		Para los segmentos de voz, el de duración mínima es de 0.615 segundos. 
 
 		La duración mínima de los silencios es de 0.468 segundos. En general la longitud de los silencios ronda los 0.5 segundos. 
 		Para los segmentos de voz, el de duración mínima es de 0.615 segundos. 
 
 	* ¿Es capaz de sacar alguna conclusión a partir de la evolución de la tasa de cruces por cero?
+		A partir de nuestra captura no podemos sacar conclusiones muy claras pero sabemos que en las fricativas sordas los cruces por cero aumentan y en las sonoras disminuyen porque su frecuencia es menor. 
+		También sabemos que en los silencios, la probabilidad de que la señal cambie de signo, es decir, de que tengamos un cruce por zero, es de un medio.
+		
 
 		A partir de nuestra captura no podemos sacar conclusiones muy claras pero sabemos que en las fricativas sordas los cruces por cero aumentan y en las sonoras disminuyen porque su frecuencia es menor. 
 		También sabemos que en los silencios, la probabilidad de que la señal cambie de signo, es decir, de que tengamos un cruce por zero, es de un medio.
@@ -131,6 +136,8 @@ Ejercicios
 
 	<img src="img/Captura_wave_2.JPG" width="640" align="center">
 
+
+
 - Explique, si existen. las discrepancias entre el etiquetado manual y la detección automática.
 
 	Podemos observar que los periodos de silencio y de voz los detecta bién pero con un poco de retardo. Es decir, el primer segmento de voz empieza un poco mas tarde en el hola.vad (detección) que en el hola.lab(editado manualmente) pero tiene la misma duración. Esto pasa porque el primer silencio es un poco mas largo, tarda un poquito mas en detectar la primera trama de voz. A continuación, adjuntamos dos capturas del hola.vad y el hola.lab para ver exactamente los valores de los tiempos:
@@ -140,6 +147,13 @@ Ejercicios
 - Evalúe los resultados sobre la base de datos `db.v4` con el script `vad_evaluation.pl` e inserte a 
   continuación las tasas de sensibilidad (*recall*) y precisión para el conjunto de la base de datos (sólo
   el resumen).
+  A continuación podemos ver los resultados de nuestro script hola.lab:
+
+	<img src="img/captura_3.png" width="640" align="center">
+
+  Y ahora hacemos lo mismo pero para la base de datos:
+	<img src="img/captura_6.png" width="640" align="center">
+	Podemos observar que nos da un 94% aproximadamente de precisión de detección vocal.
 
   	A continuación podemos ver los resultados de nuestro script hola.lab:
 
